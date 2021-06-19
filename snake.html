@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"/> -->
+<style>
+canvas {
+    display: block;
+    margin: 0 auto;
+    border:1px solid blue;
+    background-color: black;
+}
+</style>
+</head>
+<body onload="startGame()" style="background-color: black">
+<script>
+
+const scoreHeight = 50;
+const fieldSize = 30;
+const boardDimension = 15;
+const boardSize = boardDimension * fieldSize;
+const boardX = 0;
+const boardY = scoreHeight;
+const gameWidth = boardSize;
+const gameHeight = boardSize + scoreHeight;
+var board = [];
+var isGameStarted = true;
+var isGameOver = false;
+var isGamePaused = false;
+var score = 0;
+var highscore = 0;
+
+var snake = {
+    x : 0,
+    y : 0,
+    direction : "right",
+    coordinates : [],
+    reset : function() {
+    	this.x = 0;
+    	this.y = 0;
+    	this.direction = "right";
+    	this.coordinates = [];
+    },
+    move : function() {
+        switch(this.direction){
+            case "left":
+            	if(this.x === 0) isGameOver = true;
+            	else this.x--;
+            	break;
+            case "right":
+            	if(this.x === boardDimension-1) isGameOver = true;
+            	else this.x++;
+            	break;
+            case "up":
+            	if(this.y === 0) isGameOver = true;
+            	else this.y--
+            	break;
+            case "down":
+            	if(this.y === boardDimension - 1) isGameOver = true;
+            	else this.y++;
+            	break;
+        }
+        if(isGameOver) return;
+        if(board[this.x][this.y] instanceof snakeTail){
+        	isGameOver = true;
+        	return;
+        }
+        if(board[this.x][this.y] instanceof foodField){
+        	food.isEaten = true;
+        	if(++score > highscore) highscore++; 
+        }
+        if(!food.isEaten){
+        	board[this.coordinates[0].x][this.coordinates[0].y] = new emptyField(this.coordinates[0].x, this.coordinates[0].y)
+			this.coordinates.shift();
+        }
+        for (let i = 0; i < this.coordinates.length; i++) {
+            board[this.coordinates[i].x][this.coordinates[i].y] = new snakeTail(this.coordinates[i].x, this.coordinates[i].y);
+        }
+        board[this.x][this.y] = new snakeHead(this.x, this.y);
+        this.coordinates.push(new pair(this.x, this.y));
+    }
+};
+
+var food = {
+	position : undefined,
+	temp : [],
+	isEaten : true,
+	move : function(){
+		if(this.isEaten)
+		{
+			this.isEaten = false;
+			this.temp = [];
+			for(let i=0; i<boardDimension; i++){
+				for(let j=0; j<boardDimension; j++){
+					if(board[i][j] instanceof emptyField) this.temp.push(new pair(i, j));
+				}
+			}
+			position = getRandomInt(0, this.temp.length);
+		}
+		board[this.temp[position].x][this.temp[position].y] = new foodField(this.temp[position].x, this.temp[position].y);
+	},
+	reset : function(){
+		this.position = undefined;
+		this.temp = [];
+		this.isEaten = true;
+	}
+}
+
+//main object - canvas, event handler and animation loop
+var gameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = gameWidth;
+        this.canvas.height = gameHeight;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.interval = setInterval(updateGameArea, 150);
+        window.addEventListener('keydown', function(e){
+        	gameArea.key = e.keyCode;
+        })
+    },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+};
+
+function startGame() {
+	clearBoard(); 
+    gameArea.start();
+}
+
+function snakeTail(x, y){
+	this.x = x;
+	this.y = y;
+	this.update = function(){
+		ctx = gameArea.context;
+		ctx.fillStyle = "darkgreen";
+		ctx.fillRect(boardX + this.x * fieldSize, boardY + this.y * fieldSize, fieldSize, fieldSize);
+		ctx.strokeStyle = "green";
+		ctx.strokeRect(boardX + this.x * fieldSize, boardY + this.y * fieldSize, fieldSize, fieldSize);
+	}
+}
+function snakeHead(x, y){
+	this.x = x;
+	this.y = y;
+	this.update = function(){
+		ctx = gameArea.context;
+		ctx.fillStyle = "green";
+		ctx.fillRect(boardX + this.x * fieldSize, boardY + this.y * fieldSize, fieldSize, fieldSize);
+		/*ctx.fillStyle = "white";
+		ctx.fillRect(boardX + (this.x + 0.2) * fieldSize, boardY + (this.y + 0.2) * fieldSize, fieldSize*0.2, fieldSize*0.2);
+		ctx.fillRect(boardX + (this.x + 0.6) * fieldSize, boardY + (this.y + 0.2) * fieldSize, fieldSize*0.2, fieldSize*0.2);
+		ctx.fillStyle = "black";
+		ctx.fillRect(boardX + (this.x + 0.25) * fieldSize, boardY + (this.y + 0.25) * fieldSize, fieldSize*0.1, fieldSize*0.1);
+		ctx.fillRect(boardX + (this.x + 0.65) * fieldSize, boardY + (this.y + 0.25) * fieldSize, fieldSize*0.1, fieldSize*0.1);*/
+		ctx.fillStyle = "white"
+		ctx.beginPath();
+		ctx.arc(boardX + (this.x + 0.3) * fieldSize, boardY + (this.y + 0.3) * fieldSize, fieldSize*0.1, 0, 2*Math.PI);
+		ctx.fill();
+		ctx.beginPath();
+		ctx.arc(boardX + (this.x + 0.7) * fieldSize, boardY + (this.y + 0.3) * fieldSize, fieldSize*0.1, 0, 2*Math.PI);
+		ctx.fill();
+		ctx.strokeStyle = "darkgreen";
+		ctx.strokeRect(boardX + this.x * fieldSize, boardY + this.y * fieldSize, fieldSize, fieldSize);
+	}
+}
+function emptyField(x, y){
+	this.x = x;
+	this.y = y;
+	this.update = function(){
+		ctx = gameArea.context;
+		ctx.strokeStyle = "blue";
+		ctx.strokeRect(boardX + this.x * fieldSize, boardY + this.y * fieldSize, fieldSize, fieldSize);
+	}
+}
+function foodField(x, y){
+	this.x = x;
+	this.y = y;
+	this.update = function(){
+		ctx = gameArea.context;
+		ctx.strokeStyle = "blue";
+		ctx.strokeRect(boardX + this.x * fieldSize, boardY + this.y * fieldSize, fieldSize, fieldSize);
+		ctx.fillStyle = "red";
+		ctx.beginPath();
+		ctx.arc(boardX + (this.x + 0.5) * fieldSize, boardY + (this.y + 0.5) * fieldSize, fieldSize/2, 0, 2*Math.PI);
+		ctx.fill();
+	}
+}
+
+function pair(x, y){
+	this.x = x;
+	this.y = y;
+}
+
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min)) + min;
+}
+
+function clearBoard() {
+	for(let i=0; i<boardDimension; i++){
+    	board[i] = [];
+    	for(let j=0; j<boardDimension; j++){
+        	board[i][j] = new emptyField(i, j);
+        }
+    }
+}
+
+function updateGameArea() {
+	gameArea.clear();
+	scoreUpdate();
+	if(isGameOver){
+		gameOver();
+	}
+	else if(isGamePaused){
+		pause();
+	}
+	else if(isGameStarted){
+		intro();
+	}
+	else{
+		switch(gameArea.key){
+	    	case 37:
+	    	if(snake.direction !== "right") snake.direction = "left";
+	    	break;
+	    	case 39:
+	    	if(snake.direction !== "left") snake.direction = "right";
+	    	break;
+	    	case 38:
+	    	if(snake.direction !== "down") snake.direction = "up";
+	    	break;
+	    	case 40:
+			if(snake.direction !== "up") snake.direction = "down";
+	    	break;
+	    	case 27:
+	    	isGamePaused = true;
+	    	pause();
+	    	return;
+	    	break;
+	    }
+	    snake.move();
+	    food.move();
+	    boardUpdate();
+	}
+	
+}
+
+function intro(){
+	var ctx = gameArea.canvas.getContext("2d");
+	ctx.font = "50px Arial";
+	ctx.fillStyle = "white";
+	ctx.textAlign = "center";
+	ctx.fillText("SNAKE", boardSize/2, boardSize/2);
+	ctx.font = "20px Arial";
+	ctx.fillText("Press Enter to start the game", boardSize/2, boardSize/2 + 40);
+	if(gameArea.key === 13){ //enter
+		isGameStarted = false;
+	}
+}
+
+function scoreUpdate(){
+	var ctx = gameArea.canvas.getContext("2d");
+	ctx.font = "30px Arial";
+	ctx.fillStyle = "white";
+	ctx.textAlign = "center";
+	ctx.fillText("highscore: " + highscore + "     score: " + score, gameWidth/2, scoreHeight/2 + 10);
+}
+
+function boardUpdate(){
+	for(let column of board){
+		for(let field of column){
+			field.update();
+		}
+	}
+}
+
+function pause(){
+	var ctx = gameArea.canvas.getContext("2d");
+	ctx.font = "50px Arial";
+	ctx.fillStyle = "white";
+	ctx.textAlign = "center";
+	ctx.fillText("GAME PAUSED", boardSize/2, boardSize/2);
+	ctx.font = "20px Arial";
+	ctx.fillText("Press Enter to continue", boardSize/2, boardSize/2 + 40);
+	if(gameArea.key === 13){ //enter
+		isGamePaused = false;
+	}
+}
+function gameOver(){
+	var ctx = gameArea.canvas.getContext("2d");
+	ctx.font = "50px Arial";
+	ctx.fillStyle = "white";
+	ctx.textAlign = "center";
+	ctx.fillText("GAME OVER", boardSize/2, boardSize/2);
+	ctx.font = "20px Arial";
+	ctx.fillText("Press Enter to restart", boardSize/2, boardSize/2 + 40);
+	if(gameArea.key === 13){ //enter
+		reset();
+	}
+}
+
+function reset(){
+	clearBoard();
+	snake.reset();
+	food.reset();
+	isGameOver = false;
+	score = 0;
+}
+
+</script>
+</body>
+</html>
